@@ -226,3 +226,171 @@ mysite/
 ```
 
 ---
+
+01/11/2025
+
+
+#  Criar o Model
+
+`core/models.py`
+
+```python
+from django.db import models
+
+class Produto(models.Model):
+    nome = models.CharField(max_length=100)
+    preco = models.DecimalField(max_digits=8, decimal_places=2)
+    estoque = models.PositiveIntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nome} (R$ {self.preco})"
+```
+
+> Dica: `__str__` deixa a listagem mais legível no Admin e no shell.
+
+---
+
+# Migrar o banco
+
+No terminal (na pasta do projeto, onde está o `manage.py`):
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+Isso cria a tabela `core_produto` no SQLite padrão (`db.sqlite3`).
+
+---
+
+# Registrar no Django Admin
+
+`core/admin.py`
+
+```python
+from django.contrib import admin
+from .models import Produto
+
+@admin.register(Produto)
+class ProdutoAdmin(admin.ModelAdmin):
+    list_display = ("id", "nome", "preco", "estoque", "criado_em")
+    list_display_links = ("id", "nome")
+    search_fields = ("nome",)
+    list_filter = ("criado_em",)
+    ordering = ("-criado_em",)
+```
+
+Crie um superusuário e acesse o painel:
+
+```bash
+python manage.py createsuperuser
+python manage.py runserver
+# entrar em: http://127.0.0.1:8000/admin
+```
+
+Cadastre alguns **Produtos** pelo Admin.
+
+
+---
+
+# Exibir dados no Template
+
+### View
+
+`core/views.py`
+
+```python
+from django.shortcuts import render
+from .models import Produto
+
+def lista_produtos(request):
+    produtos = Produto.objects.order_by("-criado_em")  # mais recentes primeiro
+    return render(request, "produtos.html", {"produtos": produtos})
+```
+
+### URL
+
+`mysite/urls.py`
+
+```python
+from django.contrib import admin
+from django.urls import path
+from core.views import home, lista_produtos
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', home),
+    path('produtos/', lista_produtos),
+]
+```
+
+### Template
+
+`core/templates/produtos.html`
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Produtos</title>
+</head>
+<body>
+  <h1>Produtos</h1>
+
+  {% if produtos %}
+    <ul>
+      {% for p in produtos %}
+        <li>
+          <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} 
+          (Estoque: {{ p.estoque }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nenhum produto cadastrado ainda.</p>
+  {% endif %}
+
+  <p><a href="/admin/">Abrir Admin</a></p>
+</body>
+</html>
+```
+va em mysite/urls e coloque:
+
+```python
+from core.views import home, lista_produtos 
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', home),  # rota raiz do site
+    path('produtos/', lista_produtos),
+]
+```
+
+Abra: `http://127.0.0.1:8000/produtos/` — você verá os itens que cadastrou.
+
+---
+(não fiz essa parte, mas se precisar)
+
+# Popular via shell
+
+Se preferir criar dados rápido:
+
+```bash
+python manage.py shell
+```
+
+```python
+from core.models import Produto
+Produto.objects.create(nome="Teclado", preco=199.90, estoque=12)
+Produto.objects.create(nome="Mouse", preco=89.50, estoque=30)
+Produto.objects.create(nome="Monitor", preco=1299.00, estoque=7)
+exit()
+```
+
+Recarregue `/produtos/`.
+
+---
+

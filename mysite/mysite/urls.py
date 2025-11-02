@@ -16,9 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from core.views import home  # importa a view
+from core.views import home, lista_produtos 
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home),  # rota raiz do site
+    path('produtos/', lista_produtos),
 ]

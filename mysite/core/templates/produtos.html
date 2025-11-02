@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Produtos</title>
+</head>
+<body>
+  <h1>Produtos</h1>
+
+  {% if produtos %}
+    <ul>
+      {% for p in produtos %}
+        <li>
+          <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} 
+          (Estoque: {{ p.estoque }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nenhum produto cadastrado ainda.</p>
+  {% endif %}
+
+  <p><a href="/admin/">Abrir Admin</a></p>
+</body>
+</html>
