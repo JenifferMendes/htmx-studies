@@ -394,3 +394,264 @@ Recarregue `/produtos/`.
 
 ---
 
+# Crie o `forms.py` (ModelForm + validação)
+
+`core/forms.py`
+
+```python
+from django import forms
+from .models import Produto
+
+class ProdutoForm(forms.ModelForm):
+    class Meta:
+        model = Produto
+        fields = ["nome", "preco", "estoque"]
+
+    # Exemplo simples de validação
+    def clean_preco(self):
+        preco = self.cleaned_data["preco"]
+        if preco <= 0:
+            raise forms.ValidationError("O preço deve ser maior que zero.")
+        return preco
+```
+
+---
+
+# Views: listar e criar (GET/POST + mensagens)
+
+`core/views.py`
+
+```python
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Produto
+from .forms import ProdutoForm
+
+def lista_produtos(request):
+    produtos = Produto.objects.order_by("-criado_em")
+    return render(request, "produtos.html", {"produtos": produtos})
+
+def cria_produto(request):
+    if request.method == "POST":
+        form = ProdutoForm(request.POST)
+        if form.is_valid():
+            produto = form.save()
+            messages.success(request, f'Produto "{produto.nome}" criado com sucesso!')
+            return redirect("lista_produtos")
+        else:
+            messages.error(request, "Corrija os erros abaixo e tente novamente.")
+    else:
+        form = ProdutoForm()
+    return render(request, "produto_form.html", {"form": form})
+```
+
+> Notas
+> • `messages.success` / `messages.error` aparecem no template (vamos montar já).
+> • `redirect("lista_produtos")` usa **nome de rota** (vamos nomear na URL).
+
+---
+
+# 3) URLs: inclua rota “novo produto”
+
+Se você está usando **`mysite/urls.py`** diretamente:
+
+```python
+from django.contrib import admin
+from django.urls import path
+from core.views import home, lista_produtos, cria_produto
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", home, name="home"),
+    path("produtos/", lista_produtos, name="lista_produtos"),
+    path("produtos/novo/", cria_produto, name="cria_produto"),
+]
+```
+
+Ou, se usa **`core/urls.py`** + `include`:
+
+```python
+# core/urls.py
+from django.urls import path
+from .views import home, lista_produtos, cria_produto
+
+urlpatterns = [
+    path("", home, name="home"),
+    path("produtos/", lista_produtos, name="lista_produtos"),
+    path("produtos/novo/", cria_produto, name="cria_produto"),
+]
+```
+
+```python
+# mysite/urls.py
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", include("core.urls")),
+]
+```
+
+---
+
+# 4) Herança de templates (boilerplate + mensagens)
+
+## `core/templates/base.html`
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Meu Site{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    nav a { margin-right: 12px; }
+    .messages { margin: 12px 0; padding: 0; list-style: none; }
+    .messages li { padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
+    .messages li.success { background: #e7f6ec; border: 1px solid #b7e2c1; }
+    .messages li.error   { background: #fde8e8; border: 1px solid #f5c2c7; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="{% url 'home' %}">Home</a>
+    <a href="{% url 'lista_produtos' %}">Produtos</a>
+    <a href="{% url 'cria_produto' %}">Novo produto</a>
+  </nav>
+
+  {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</body>
+</html>
+```
+
+> O Django já vem com o **messages framework** habilitado para templates; no seu `settings.py` ele já traz os context processors necessários (como vimos no dump).
+
+---
+
+# 5) Atualize os templates para herdar de `base.html`
+
+## `core/templates/produtos.html`
+
+```html
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block content %}
+  <h1>Produtos</h1>
+
+  {% if produtos %}
+    <ul>
+      {% for p in produtos %}
+        <li>
+          <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nenhum produto cadastrado ainda.</p>
+  {% endif %}
+{% endblock %}
+```
+
+## `core/templates/produto_form.html`
+
+```html
+{% extends "base.html" %}
+{% block title %}Novo produto{% endblock %}
+{% block content %}
+  <h1>Novo produto</h1>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <p>
+      {{ form.nome.label_tag }}<br>
+      {{ form.nome }}
+      {% for error in form.nome.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <p>
+      {{ form.preco.label_tag }}<br>
+      {{ form.preco }}
+      {% for error in form.preco.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <p>
+      {{ form.estoque.label_tag }}<br>
+      {{ form.estoque }}
+      {% for error in form.estoque.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <button type="submit">Salvar</button>
+  </form>
+{% endblock %}
+```
+
+> Quer simplificar? troque os campos por `{{ form.as_p }}`.
+> Quer deixar mais bonito? depois podemos plugar Bootstrap (sem mudar a lógica).
+
+---
+
+# Teste rápido
+
+1. Acesse **/produtos/** (lista vazia).
+2. Vá em **/produtos/novo/**, preencha e salve.
+3. Você deve ser redirecionado para a lista, com **mensagem de sucesso** no topo.
+
+---
+vai **no `forms.py`**, dentro da sua classe `ProdutoForm`.
+Segue o arquivo completo para você **copiar e colar**:
+
+`core/forms.py`
+
+```python
+from django import forms
+from .models import Produto
+
+class ProdutoForm(forms.ModelForm):
+    class Meta:
+        model = Produto
+        fields = ["nome", "preco", "estoque"]
+
+        # <- AQUI entram os placeholders e outros atributos de HTML
+        widgets = {
+            "nome": forms.TextInput(attrs={
+                "placeholder": "Ex.: Teclado mecânico",
+                "autofocus": "autofocus"
+            }),
+            "preco": forms.NumberInput(attrs={
+                "step": "0.01",   # passo de centavos
+                "min": "0"        # não deixa digitar negativo
+            }),
+            "estoque": forms.NumberInput(attrs={
+                "min": "0"
+            }),
+        }
+
+        # (opcional) rótulos bonitinhos
+        labels = {
+            "nome": "Nome do produto",
+            "preco": "Preço (R$)",
+            "estoque": "Estoque",
+        }
+
+    # (opcional) validação extra
+    def clean_preco(self):
+        preco = self.cleaned_data["preco"]
+        if preco <= 0:
+            raise forms.ValidationError("O preço deve ser maior que zero.")
+        return preco
+```
+
+
