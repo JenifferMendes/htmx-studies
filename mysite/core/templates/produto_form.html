@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Novo produto{% endblock %}
+{% block content %}
+  <h1>Novo produto</h1>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <p>
+      {{ form.nome.label_tag }}<br>
+      {{ form.nome }}
+      {% for error in form.nome.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <p>
+      {{ form.preco.label_tag }}<br>
+      {{ form.preco }}
+      {% for error in form.preco.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <p>
+      {{ form.estoque.label_tag }}<br>
+      {{ form.estoque }}
+      {% for error in form.estoque.errors %}<small style="color:#b00">{{ error }}</small>{% endfor %}
+    </p>
+
+    <button type="submit">Salvar</button>
+  </form>
+{% endblock %}
