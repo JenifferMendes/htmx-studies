@@ -1,22 +1,14 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <title>Produtos</title>
-</head>
-<body>
-  <h1>Produtos</h1>
-
- {% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Produtos{% endblock %}
 {% block content %}
   <h1>Produtos</h1>
-
   {% if produtos %}
     <ul>
       {% for p in produtos %}
         <li>
           <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+          · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+          · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
         </li>
       {% endfor %}
     </ul>
@@ -24,7 +16,3 @@
     <p>Nenhum produto cadastrado ainda.</p>
   {% endif %}
 {% endblock %}
-
-  <p><a href="/admin/">Abrir Admin</a></p>
-</body>
-</html>
