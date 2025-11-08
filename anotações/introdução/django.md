@@ -655,3 +655,153 @@ class ProdutoForm(forms.ModelForm):
 ```
 
 
+perfeito — vamos **finalizar o teste** e seguir pro **CRUD completo**.
+
+# ✅ Teste rápido (garantia de que está tudo OK)
+
+1. Abra **/produtos/**
+   – Se não houver itens, deve mostrar “Nenhum produto cadastrado ainda.”
+
+2. Vá em **/produtos/novo/**, preencha e **Salvar**
+   – Se tudo certo, você será **redirecionado para /produtos/** com a **mensagem verde** no topo:
+   `Produto "<nome>" criado com sucesso!`
+
+3. Se algo **não aparecer**:
+
+   * `base.html` precisa ter o bloco das mensagens (aquele `<ul class="messages">…`).
+   * A view `cria_produto` precisa ter `messages.success(...)` e `redirect("lista_produtos")`.
+   * A URL `lista_produtos` deve existir com `name="lista_produtos"`.
+
+Tudo certinho? Então bora para **editar e excluir**.
+
+---
+
+# Editar e Excluir (Update/Delete)
+
+## Views
+
+`core/views.py`
+
+```python
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Produto
+from .forms import ProdutoForm
+
+def edita_produto(request, pk):
+    produto = get_object_or_404(Produto, pk=pk)
+    if request.method == "POST":
+        form = ProdutoForm(request.POST, instance=produto)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Produto "{produto.nome}" atualizado!')
+            return redirect("lista_produtos")
+        messages.error(request, "Corrija os erros e tente novamente.")
+    else:
+        form = ProdutoForm(instance=produto)
+    return render(request, "produto_form.html", {"form": form, "produto": produto})
+
+def exclui_produto(request, pk):
+    produto = get_object_or_404(Produto, pk=pk)
+    if request.method == "POST":
+        nome = produto.nome
+        produto.delete()
+        messages.success(request, f'Produto "{nome}" excluído!')
+        return redirect("lista_produtos")
+    return render(request, "produto_confirm_delete.html", {"produto": produto})
+```
+
+## 2) URLs
+
+Se você está usando **mysite/urls.py** direto:
+
+```python
+from django.contrib import admin
+from django.urls import path
+from core.views import home, lista_produtos, cria_produto, edita_produto, exclui_produto
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", home, name="home"),
+    path("produtos/", lista_produtos, name="lista_produtos"),
+    path("produtos/novo/", cria_produto, name="cria_produto"),
+    path("produtos/<int:pk>/editar/", edita_produto, name="edita_produto"),
+    path("produtos/<int:pk>/excluir/", exclui_produto, name="exclui_produto"),
+]
+```
+
+(Se usa `core/urls.py`, copie essas linhas para lá e mantenha o `include` no `mysite/urls.py`.)
+
+## 3) Templates
+
+### 3.1. Reaproveite `produto_form.html`
+
+Ele já serve para **criar** e **editar**. Só adicione um título condicional:
+
+```django
+{% extends "base.html" %}
+{% block title %}{{ produto|default_if_none:"Novo" }} produto{% endblock %}
+{% block content %}
+  <h1>{{ produto|default_if_none:"Novo" }} produto</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>{{ form.nome.label_tag }}<br>{{ form.nome }}{% for e in form.nome.errors %}<small style="color:#b00">{{ e }}</small>{% endfor %}</p>
+    <p>{{ form.preco.label_tag }}<br>{{ form.preco }}{% for e in form.preco.errors %}<small style="color:#b00">{{ e }}</small>{% endfor %}</p>
+    <p>{{ form.estoque.label_tag }}<br>{{ form.estoque }}{% for e in form.estoque.errors %}<small style="color:#b00">{{ e }}</small>{% endfor %}</p>
+    <button type="submit">Salvar</button>
+  </form>
+{% endblock %}
+```
+
+### 3.2. Confirmação de exclusão
+
+`core/templates/produto_confirm_delete.html`
+
+```django
+{% extends "base.html" %}
+{% block title %}Excluir produto{% endblock %}
+{% block content %}
+  <h1>Excluir produto</h1>
+  <p>Tem certeza que deseja excluir <strong>{{ produto.nome }}</strong>?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">Sim, excluir</button>
+    <a href="{% url 'lista_produtos' %}">Cancelar</a>
+  </form>
+{% endblock %}
+```
+
+### 3.3. Links na lista
+
+`core/templates/produtos.html`
+
+```django
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block content %}
+  <h1>Produtos</h1>
+  {% if produtos %}
+    <ul>
+      {% for p in produtos %}
+        <li>
+          <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+          · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+          · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Nenhum produto cadastrado ainda.</p>
+  {% endif %}
+{% endblock %}
+```
+
+## 4) Teste
+
+1. Crie 1–2 produtos em **/produtos/novo/**.
+2. Clique **Editar** → altere preço → **Salvar** (volta para a lista com mensagem).
+3. Clique **Excluir** → confirme → volta com mensagem.
+
+Se algo quebrar, me diga a mensagem (linha/arquivo) e eu ajusto.
+Quer que na sequência eu adicione **busca e paginação** na lista, ou preferir **Bootstrap** para deixar a UI mais bonitinha?
