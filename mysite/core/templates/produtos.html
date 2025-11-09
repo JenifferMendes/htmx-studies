@@ -1,18 +1,65 @@
 {% extends "base.html" %}
 {% block title %}Produtos{% endblock %}
+
 {% block content %}
-  <h1>Produtos</h1>
-  {% if produtos %}
-    <ul>
-      {% for p in produtos %}
-        <li>
-          <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
-          · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
-          · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>Nenhum produto cadastrado ainda.</p>
+<h1>Produtos</h1>
+
+<form method="get" style="margin-bottom: 20px;">
+
+  <!-- Busca -->
+  <input type="text" name="q" placeholder="Pesquisar produto..." value="{{ termo }}" />
+
+  <!-- Filtro de estoque -->
+  <select name="estoque">
+    <option value="">Estoque (todos)</option>
+    <option value="sem"   {% if filtro_estoque == "sem" %}selected{% endif %}>Sem estoque</option>
+    <option value="baixo" {% if filtro_estoque == "baixo" %}selected{% endif %}>Baixo (<= 5)</option>
+    <option value="alto"  {% if filtro_estoque == "alto" %}selected{% endif %}>Alto (>= 20)</option>
+  </select>
+
+  <!-- Ordenação -->
+  <select name="ord">
+    <option value="recente"     {% if ordenar == "recente" %}selected{% endif %}>Mais recente</option>
+    <option value="nome"        {% if ordenar == "nome" %}selected{% endif %}>Nome</option>
+    <option value="preco_cresc" {% if ordenar == "preco_cresc" %}selected{% endif %}>Preço (↑)</option>
+    <option value="preco_desc"  {% if ordenar == "preco_desc" %}selected{% endif %}>Preço (↓)</option>
+  </select>
+
+  <button type="submit">Filtrar</button>
+</form>
+
+
+<!-- Lista -->
+{% if page_obj %}
+  <ul>
+    {% for p in page_obj %}
+      <li>
+        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+        · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+        · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nenhum produto encontrado.</p>
+{% endif %}
+
+
+<!-- Paginação -->
+<div style="margin-top: 20px;">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ termo }}&estoque={{ filtro_estoque }}&ord={{ ordenar }}">
+      Anterior
+    </a>
   {% endif %}
+
+  <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ termo }}&estoque={{ filtro_estoque }}&ord={{ ordenar }}">
+      Próxima
+    </a>
+  {% endif %}
+</div>
+
 {% endblock %}

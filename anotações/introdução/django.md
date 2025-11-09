@@ -803,5 +803,356 @@ Ele já serve para **criar** e **editar**. Só adicione um título condicional:
 2. Clique **Editar** → altere preço → **Salvar** (volta para a lista com mensagem).
 3. Clique **Excluir** → confirme → volta com mensagem.
 
-Se algo quebrar, me diga a mensagem (linha/arquivo) e eu ajusto.
-Quer que na sequência eu adicione **busca e paginação** na lista, ou preferir **Bootstrap** para deixar a UI mais bonitinha?
+# ✅ **MÓDULO 6 — LISTAGEM PROFISSIONAL**
+
+## Busca, filtros, ordenação e paginação
+
+Este módulo transforma sua listagem `/produtos/` em algo **profissional estilo sistema real**, com:
+
+* barra de **busca**
+* **filtro por estoque**
+* **ordenar por preço / data / nome**
+* **paginação** estilo “próximo / anterior”
+
+Vamos fazer tudo do jeito correto do Django, usando:
+
+* `request.GET`
+* QuerySets encadeados
+* `Paginator`
+
+---
+
+# **View da lista (nova versão completa)**
+
+Abra `core/views.py` e substitua a função `lista_produtos` por:
+
+```python
+from django.core.paginator import Paginator
+
+def lista_produtos(request):
+    # 1) Busca
+    termo = request.GET.get("q", "").strip()
+
+    produtos = Produto.objects.all()
+
+    if termo:
+        produtos = produtos.filter(nome__icontains=termo)
+
+    # 2) Filtros
+    filtro_estoque = request.GET.get("estoque", "")
+    if filtro_estoque == "sem":
+        produtos = produtos.filter(estoque=0)
+    elif filtro_estoque == "baixo":
+        produtos = produtos.filter(estoque__lte=5)
+    elif filtro_estoque == "alto":
+        produtos = produtos.filter(estoque__gte=20)
+
+    # 3) Ordenação
+    ordenar = request.GET.get("ord", "recente")
+    if ordenar == "nome":
+        produtos = produtos.order_by("nome")
+    elif ordenar == "preco_cresc":
+        produtos = produtos.order_by("preco")
+    elif ordenar == "preco_desc":
+        produtos = produtos.order_by("-preco")
+    else:
+        produtos = produtos.order_by("-criado_em")  # padrão
+
+    # 4) Paginação
+    paginator = Paginator(produtos, 5)  # 5 por página
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    contexto = {
+        "page_obj": page_obj,
+        "termo": termo,
+        "filtro_estoque": filtro_estoque,
+        "ordenar": ordenar,
+    }
+
+    return render(request, "produtos.html", contexto)
+```
+
+---
+
+# 2) **Template profissional da lista**
+
+Atualize `core/templates/produtos.html`:
+
+```django
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+
+{% block content %}
+<h1>Produtos</h1>
+
+<form method="get" style="margin-bottom: 20px;">
+
+  <!-- Busca -->
+  <input type="text" name="q" placeholder="Pesquisar produto..." value="{{ termo }}" />
+
+  <!-- Filtro de estoque -->
+  <select name="estoque">
+    <option value="">Estoque (todos)</option>
+    <option value="sem"   {% if filtro_estoque == "sem" %}selected{% endif %}>Sem estoque</option>
+    <option value="baixo" {% if filtro_estoque == "baixo" %}selected{% endif %}>Baixo (<= 5)</option>
+    <option value="alto"  {% if filtro_estoque == "alto" %}selected{% endif %}>Alto (>= 20)</option>
+  </select>
+
+  <!-- Ordenação -->
+  <select name="ord">
+    <option value="recente"     {% if ordenar == "recente" %}selected{% endif %}>Mais recente</option>
+    <option value="nome"        {% if ordenar == "nome" %}selected{% endif %}>Nome</option>
+    <option value="preco_cresc" {% if ordenar == "preco_cresc" %}selected{% endif %}>Preço (↑)</option>
+    <option value="preco_desc"  {% if ordenar == "preco_desc" %}selected{% endif %}>Preço (↓)</option>
+  </select>
+
+  <button type="submit">Filtrar</button>
+</form>
+
+
+<!-- Lista -->
+{% if page_obj %}
+  <ul>
+    {% for p in page_obj %}
+      <li>
+        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+        · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+        · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nenhum produto encontrado.</p>
+{% endif %}
+
+
+<!-- Paginação -->
+<div style="margin-top: 20px;">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ termo }}&estoque={{ filtro_estoque }}&ord={{ ordenar }}">
+      Anterior
+    </a>
+  {% endif %}
+
+  <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ termo }}&estoque={{ filtro_estoque }}&ord={{ ordenar }}">
+      Próxima
+    </a>
+  {% endif %}
+</div>
+
+{% endblock %}
+```
+
+---
+
+# 3) O que você ganhou aqui
+
+✅ **Busca** por nome
+✅ **Filtros** úteis (sem estoque, baixo, alto)
+✅ **Ordenação inteligente**
+✅ **Paginação profissional**
+✅ URL sempre mantém busca + filtros + ordenação
+✅ Template limpo, organizado e reutilizável
+
+Sua listagem agora está **nível sistema real**, exatamente como empresas usam.
+
+
+---
+
+# 🔧 **Criar o modelo Categoria**
+
+Abra `core/models.py` e adicione:
+
+```python
+class Categoria(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+    descricao = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.nome
+```
+
+> `unique=True` evita categorias duplicadas.
+
+Depois, rode as migrações:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+---
+[parei aqui]
+# 🛠️ **2) Registrar Categoria no Admin**
+
+`core/admin.py`
+
+```python
+from django.contrib import admin
+from .models import Produto, Categoria
+
+@admin.register(Categoria)
+class CategoriaAdmin(admin.ModelAdmin):
+    list_display = ("id", "nome")
+    search_fields = ("nome",)
+```
+
+Pronto, agora você consegue criar categorias no painel `/admin/`.
+
+---
+
+# 🔗 **3) Conectar Produto → Categoria (FK)**
+
+No `Produto`, adicione uma `ForeignKey`:
+
+```python
+class Produto(models.Model):
+    nome = models.CharField(max_length=100)
+    preco = models.DecimalField(max_digits=8, decimal_places=2)
+    estoque = models.PositiveIntegerField(default=0)
+    categoria = models.ForeignKey(
+        Categoria, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nome} (R$ {self.preco})"
+```
+
+> `SET_NULL`: se apagar categoria, o produto não some, apenas fica sem categoria.
+
+Rode migração:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+---
+
+# 📝 **4) Atualizar o formulário de Produto**
+
+`core/forms.py`
+Dentro de `Meta.fields`, adicione `"categoria"`:
+
+```python
+class ProdutoForm(forms.ModelForm):
+    class Meta:
+        model = Produto
+        fields = ["nome", "preco", "estoque", "categoria"]
+
+        widgets = {
+            "nome": forms.TextInput(attrs={"placeholder": "Ex.: Teclado"}),
+            "categoria": forms.Select(),
+        }
+```
+
+Isso cria um `<select>` automático com todas as categorias cadastradas.
+
+---
+
+# 🎨 **5) Mostrar categoria nos templates**
+
+## No `produtos.html`, dentro do loop:
+
+```django
+<li>
+  <strong>{{ p.nome }}</strong> — R$ {{ p.preco }}
+  (Estoque: {{ p.estoque }})
+  {% if p.categoria %} — Categoria: {{ p.categoria.nome }}{% endif %}
+  · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+  · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+</li>
+```
+
+---
+
+# ✅ **6) Filtrar produtos por categoria (importante!)**
+
+Adicione uma rota:
+
+`mysite/urls.py` (ou core/urls.py se estiver usando include):
+
+```python
+path("categorias/<int:pk>/", produtos_por_categoria, name="produtos_por_categoria"),
+```
+
+Agora crie a view:
+
+`core/views.py`:
+
+```python
+def produtos_por_categoria(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    produtos = Produto.objects.filter(categoria=categoria).order_by("-criado_em")
+
+    return render(request, "produtos_por_categoria.html", {
+        "categoria": categoria,
+        "produtos": produtos
+    })
+```
+
+---
+
+# ✅ **7) Template da lista por categoria**
+
+Crie `core/templates/produtos_por_categoria.html`:
+
+```django
+{% extends "base.html" %}
+{% block title %}{{ categoria.nome }}{% endblock %}
+
+{% block content %}
+<h1>Categoria: {{ categoria.nome }}</h1>
+
+{% if produtos %}
+  <ul>
+    {% for p in produtos %}
+      <li>
+        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }}
+        · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+        · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nenhum produto nesta categoria.</p>
+{% endif %}
+{% endblock %}
+```
+
+---
+
+# ✅ **8) Linkar cada categoria na lista de produtos**
+
+Em `produtos.html`, coloque isso perto do nome da categoria:
+
+```django
+{% if p.categoria %}
+  — <a href="{% url 'produtos_por_categoria' p.categoria.pk %}">
+      {{ p.categoria.nome }}
+    </a>
+{% endif %}
+```
+
+Agora você pode clicar no nome da categoria e ver apenas os produtos dela.
+
+---
+
+# ✅ O que você construiu agora
+
+✅ Modelo Categoria
+✅ CRUD via Admin
+✅ Produto com ForeignKey para Categoria
+✅ Select de categoria no formulário
+✅ Listagem mostrando categoria
+✅ Página “Produtos desta categoria”
+✅ Links entre produtos e categorias
+
+Seu projeto agora já está **relacional**, igual a sistemas reais.
+
+---
