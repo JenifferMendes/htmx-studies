@@ -1139,6 +1139,4 @@ Em `produtos.html`, coloque isso perto do nome da categoria:
 {% endif %}
 ```
 
-Agora você pode clicar no nome da categoria e ver apenas os produtos dela.
-
 ---
