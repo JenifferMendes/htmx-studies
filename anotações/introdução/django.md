@@ -986,7 +986,7 @@ python manage.py migrate
 ```
 
 ---
-[parei aqui]
+
 # 🛠️ **2) Registrar Categoria no Admin**
 
 `core/admin.py`
@@ -1140,19 +1140,5 @@ Em `produtos.html`, coloque isso perto do nome da categoria:
 ```
 
 Agora você pode clicar no nome da categoria e ver apenas os produtos dela.
-
----
-
-# ✅ O que você construiu agora
-
-✅ Modelo Categoria
-✅ CRUD via Admin
-✅ Produto com ForeignKey para Categoria
-✅ Select de categoria no formulário
-✅ Listagem mostrando categoria
-✅ Página “Produtos desta categoria”
-✅ Links entre produtos e categorias
-
-Seu projeto agora já está **relacional**, igual a sistemas reais.
 
 ---

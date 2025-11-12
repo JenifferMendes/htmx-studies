@@ -4,7 +4,7 @@ from .models import Produto
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
-        fields = ["nome", "preco", "estoque"]
+        fields = ["nome", "preco", "estoque", "categoria"]
 
         # <- AQUI entram os placeholders e outros atributos de HTML
         widgets = {
@@ -12,6 +12,7 @@ class ProdutoForm(forms.ModelForm):
                 "placeholder": "Ex.: Teclado mecânico",
                 "autofocus": "autofocus"
             }),
+            "categoria": forms.Select(),
             "preco": forms.NumberInput(attrs={
                 "step": "0.01",   # passo de centavos
                 "min": "0"        # não deixa digitar negativo

@@ -89,3 +89,12 @@ def exclui_produto(request, pk):
         return redirect("lista_produtos")
     return render(request, "produto_confirm_delete.html", {"produto": produto})
 
+
+def produtos_por_categoria(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    produtos = Produto.objects.filter(categoria=categoria).order_by("-criado_em")
+
+    return render(request, "produtos_por_categoria.html", {
+        "categoria": categoria,
+        "produtos": produtos
+    })

@@ -34,10 +34,12 @@
   <ul>
     {% for p in page_obj %}
       <li>
-        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }} (Estoque: {{ p.estoque }})
+        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }}
+        (Estoque: {{ p.estoque }})
+        {% if p.categoria %} — Categoria: {{ p.categoria.nome }}{% endif %}
         · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
         · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
-      </li>
+      </li> 
     {% endfor %}
   </ul>
 {% else %}

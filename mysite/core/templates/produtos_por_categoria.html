@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ categoria.nome }}{% endblock %}
+
+{% block content %}
+<h1>Categoria: {{ categoria.nome }}</h1>
+
+{% if produtos %}
+  <ul>
+    {% for p in produtos %}
+      <li>
+        <strong>{{ p.nome }}</strong> — R$ {{ p.preco }}
+        · <a href="{% url 'edita_produto' p.pk %}">Editar</a>
+        · <a href="{% url 'exclui_produto' p.pk %}">Excluir</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>Nenhum produto nesta categoria.</p>
+{% endif %}
+{% endblock %}
